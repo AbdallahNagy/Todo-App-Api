@@ -40,6 +40,18 @@ listRouter.get("/", authorizeUser, async (req, res, next) => {
     }
 });
 
+// get all todos by list id
+listRouter.get("/:listId", authorizeUser, async (req, res, next) => {
+    try {
+        const { listId } = req.params;
+
+        const todos = await Todo.find({ list: listId });
+        res.json(todos);
+    } catch (error) {
+        next(error);
+    }
+});
+
 // edit list by id
 listRouter.patch("/:listId", authorizeUser, async (req, res, next) => {
     try {

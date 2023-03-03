@@ -7,10 +7,11 @@ const Todo = require("../Models/todo");
 const List = require("../Models/list");
 
 /**
- * list 1 -> todo1, todo2, todo3
- * list 2
- * list 3
- * list 4
+ * create todo
+ * on which list you want to add this task?
+ * 1. choose one of the lists -> endpoint
+ * 2. create without list -> another endpoint
+ *
  */
 
 //create todo by list id
@@ -39,78 +40,71 @@ todoRouter.post("/:listId", authorizeUser, async (req, res, next) => {
     }
 });
 
-// get all todos by list id
-todoRouter.get("/:listId", authorizeUser, async (req, res, next) => {
-    try {
-        const { listId } = req.params;
-
-        const todos = await Todo.find({ list: listId });
-        res.json(todos);
-    } catch (error) {
-        next(error);
-    }
-});
-
-//create todo
-todoRouter.post("/", async (req, res, next) => {
+//create todo without list
+todoRouter.post("/", authorizeUser, async (req, res, next) => {
     try {
         const { title, status } = req.body;
-        const todoItem = new Todo({
+        const todo = await Todo.create({
             title,
             status,
-            list,
         });
-        
-        await todoItem.save();
-        res.send(todoItem);
+
+        res.json(todo);
     } catch (err) {
         next(err);
     }
 });
 
-//get all todos
-todoRouter.get("/", async (req, res, next) => {
+//get all user todos
+todoRouter.get("/", authorizeUser, async (req, res, next) => {
     try {
-        const allTodos = await Todo.find({});
-        res.send(allTodos);
+        const { id } = req.params;
+        const todos = await Todo.find({ user: id });
+        res.json(todos);
     } catch (err) {
         res.next(err);
     }
 });
 
-// get todo by id
-todoRouter.get("/:id", async (req, res, next) => {
-    try {
-        const { id } = req.params;
-        const todoItem = await Todo.find({ _id: id });
-        res.send(todoItem);
-    } catch (error) {
-        next(error);
-    }
-});
-
 // edit todo by id
-todoRouter.patch("/:id", async (req, res, next) => {
+todoRouter.patch("/:todoId", authorizeUser, async (req, res, next) => {
     try {
-        const { id } = req.params;
+        const { todoId } = req.params;
         const { title, status } = req.body;
+
+        if (!title) throw customError(401, "title is required");
+        if (!status) throw customError(401, "status is required");
+
         const todoItem = {
             title,
             status,
         };
-        const query = await Todo.updateOne({ _id: id }, todoItem);
-        res.send(query);
+        const updatedTodo = await Todo.findByIdAndUpdate(todoId, todoItem, {
+            new: true,
+        });
+        res.json(updatedTodo);
     } catch (error) {
         next(error);
     }
 });
 
 //delete todo by id
-todoRouter.delete("/:id", async (req, res, next) => {
+todoRouter.delete("/:todoId", authorizeUser, async (req, res, next) => {
+    try {
+        const { todoId } = req.params;
+        const deletedTodo = await Todo.findByIdAndDelete(todoId);
+        res.json(deletedTodo);
+    } catch (error) {
+        next(error);
+    }
+});
+
+// get todo by id
+todoRouter.get("/:id", authorizeUser, async (req, res, next) => {
     try {
         const { id } = req.params;
-        const query = await Todo.deleteOne({ _id: id });
-        res.send(query);
+        const todoItem = await Todo.find({ _id: id });
+        res.send(todoItem);
     } catch (error) {
         next(error);
     }
