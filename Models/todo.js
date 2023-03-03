@@ -15,7 +15,8 @@ const todoSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: "User",
     }
-    // date todo created
+    // time todo created
+    // time due
 });
 
 const Todo = mongoose.model("Todo", todoSchema);
