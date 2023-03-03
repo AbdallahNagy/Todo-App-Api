@@ -15,6 +15,7 @@ const todoSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: "User",
     }
+    // date todo created
 });
 
 const Todo = mongoose.model("Todo", todoSchema);

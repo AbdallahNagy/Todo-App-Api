@@ -6,18 +6,10 @@ const { authorizeUser } = require("../userHelpers");
 const Todo = require("../Models/todo");
 const List = require("../Models/list");
 
-/**
- * create todo
- * on which list you want to add this task?
- * 1. choose one of the lists -> endpoint
- * 2. create without list -> another endpoint
- *
- */
-
 //create todo by list id
 todoRouter.post("/:listId", authorizeUser, async (req, res, next) => {
     try {
-        const { listId } = req.params;
+        const { listId, id } = req.params;
         const { title, status } = req.body;
 
         if (!title) throw customError(401, "title is required");
@@ -27,6 +19,7 @@ todoRouter.post("/:listId", authorizeUser, async (req, res, next) => {
             title,
             status,
             list: listId,
+            user: id,
         });
 
         // add todo to list
@@ -43,10 +36,12 @@ todoRouter.post("/:listId", authorizeUser, async (req, res, next) => {
 //create todo without list
 todoRouter.post("/", authorizeUser, async (req, res, next) => {
     try {
+        const { id } = req.params;
         const { title, status } = req.body;
         const todo = await Todo.create({
             title,
             status,
+            user:id
         });
 
         res.json(todo);
@@ -100,11 +95,11 @@ todoRouter.delete("/:todoId", authorizeUser, async (req, res, next) => {
 });
 
 // get todo by id
-todoRouter.get("/:id", authorizeUser, async (req, res, next) => {
+todoRouter.get("/:todoId", authorizeUser, async (req, res, next) => {
     try {
-        const { id } = req.params;
-        const todoItem = await Todo.find({ _id: id });
-        res.send(todoItem);
+        const { todoId } = req.params;
+        const todo = await Todo.findById(todoId);
+        res.json(todo);
     } catch (error) {
         next(error);
     }
