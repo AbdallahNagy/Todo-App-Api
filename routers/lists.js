@@ -7,6 +7,10 @@ const Todo = require("../Models/todo");
 const { authorizeUser } = require("../userHelpers");
 const customError = require("../ErrorHandling");
 
+const Redis = require("redis");
+const redisClient = Redis.createClient();
+const DEFAULT_EXPIRATION = 3600;
+
 // create list
 listRouter.post("/", authorizeUser, async (req, res, next) => {
     try {
@@ -31,10 +35,28 @@ listRouter.post("/", authorizeUser, async (req, res, next) => {
 listRouter.get("/", authorizeUser, async (req, res, next) => {
     try {
         const { id } = req.params;
-        const user = await User.findById(id);
-        const popUser = await user.populate("lists");
 
-        res.send(popUser.lists); // array of lists
+        await redisClient.connect();
+        const cachedUserLists = await redisClient.get("userLists");
+
+        if (cachedUserLists) {
+            console.log("cache hit");
+            res.json(JSON.parse(cachedUserLists));
+        } else {
+            console.log("cache miss");
+
+            const user = await User.findById(id);
+            const popUser = await user.populate("lists");
+            res.json(popUser.lists); // array of lists
+
+            await redisClient.setEx(
+                "userLists",
+                DEFAULT_EXPIRATION,
+                JSON.stringify(popUser.lists)
+            );
+        }
+        await redisClient.quit();
+
     } catch (error) {
         next(error);
     }
@@ -45,8 +67,25 @@ listRouter.get("/:listId", authorizeUser, async (req, res, next) => {
     try {
         const { listId } = req.params;
 
-        const todos = await Todo.find({ list: listId });
-        res.json(todos);
+        await redisClient.connect();
+        const cachedAllTodos = await redisClient.get("allTodos");
+
+        if (cachedAllTodos) {
+            console.log("cache hit");
+            res.json(JSON.parse(cachedAllTodos));
+        } else {
+            console.log("cache miss");
+
+            const todos = await Todo.find({ list: listId });
+            res.json(todos);
+
+            await redisClient.setEx(
+                "allTodos",
+                DEFAULT_EXPIRATION,
+                JSON.stringify(todos)
+            );
+        }
+        await redisClient.quit();
     } catch (error) {
         next(error);
     }
@@ -84,11 +123,11 @@ listRouter.delete("/:listId", authorizeUser, async (req, res, next) => {
         const deletedList = await List.findByIdAndDelete(listId);
         if (!deletedList) throw customError(404, "list not found");
 
-        const updatedList = user.lists.filter(list => list != listId);
+        const updatedList = user.lists.filter((list) => list != listId);
         user.lists = updatedList;
         user.save();
 
-        res.send(updatedList);
+        res.send(deletedList);
     } catch (error) {
         next(error);
     }
