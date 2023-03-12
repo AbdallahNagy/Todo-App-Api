@@ -6,6 +6,7 @@ const User = require("../Models/user");
 const Todo = require("../Models/todo");
 const { authorizeUser } = require("../userHelpers");
 const customError = require("../ErrorHandling");
+const deleteRedisKey = require('../redisHelpers')
 
 const Redis = require("redis");
 const redisClient = Redis.createClient();
@@ -26,6 +27,7 @@ listRouter.post("/", authorizeUser, async (req, res, next) => {
         user.save();
 
         res.status(200).json(list);
+        await deleteRedisKey(`userLists${id}`)
     } catch (error) {
         next(error);
     }
@@ -37,7 +39,7 @@ listRouter.get("/", authorizeUser, async (req, res, next) => {
         const { id } = req.params;
 
         await redisClient.connect();
-        const cachedUserLists = await redisClient.get("userLists");
+        const cachedUserLists = await redisClient.get(`userLists${id}`); // id to prevent conflict with other users
 
         if (cachedUserLists) {
             console.log("cache hit");
@@ -50,13 +52,12 @@ listRouter.get("/", authorizeUser, async (req, res, next) => {
             res.json(popUser.lists); // array of lists
 
             await redisClient.setEx(
-                "userLists",
+                `userLists${id}`,
                 DEFAULT_EXPIRATION,
                 JSON.stringify(popUser.lists)
             );
         }
         await redisClient.quit();
-
     } catch (error) {
         next(error);
     }
@@ -68,7 +69,7 @@ listRouter.get("/:listId", authorizeUser, async (req, res, next) => {
         const { listId } = req.params;
 
         await redisClient.connect();
-        const cachedAllTodos = await redisClient.get("allTodos");
+        const cachedAllTodos = await redisClient.get(`userTodosByList${listId}`);
 
         if (cachedAllTodos) {
             console.log("cache hit");
@@ -80,7 +81,7 @@ listRouter.get("/:listId", authorizeUser, async (req, res, next) => {
             res.json(todos);
 
             await redisClient.setEx(
-                "allTodos",
+                `userTodosByList${listId}`,
                 DEFAULT_EXPIRATION,
                 JSON.stringify(todos)
             );
@@ -106,7 +107,8 @@ listRouter.patch("/:listId", authorizeUser, async (req, res, next) => {
         );
         if (!updatedList) throw customError(404, "list not found");
 
-        res.send(updatedList);
+        res.json(updatedList);
+        await deleteRedisKey(`userLists${id}`)
     } catch (error) {
         next(error);
     }
@@ -128,6 +130,9 @@ listRouter.delete("/:listId", authorizeUser, async (req, res, next) => {
         user.save();
 
         res.send(deletedList);
+
+        await deleteRedisKey(`userLists${id}`)
+
     } catch (error) {
         next(error);
     }

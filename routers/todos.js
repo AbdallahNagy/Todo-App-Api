@@ -5,6 +5,8 @@ const customError = require("../ErrorHandling");
 const { authorizeUser } = require("../userHelpers");
 const Todo = require("../Models/todo");
 const List = require("../Models/list");
+const deleteRedisKey = require('../redisHelpers')
+
 
 const Redis = require("redis");
 const redisClient = Redis.createClient(); // {url: ''} <== when going production we need to provide a url
@@ -32,6 +34,7 @@ todoRouter.post("/:listId", authorizeUser, async (req, res, next) => {
         list.save();
 
         res.json(todo);
+        deleteRedisKey(`allUserTodos${id}`)
     } catch (err) {
         next(err);
     }
@@ -49,6 +52,7 @@ todoRouter.post("/", authorizeUser, async (req, res, next) => {
         });
 
         res.json(todo);
+        deleteRedisKey(`allUserTodos${id}`)
     } catch (err) {
         next(err);
     }
@@ -60,7 +64,7 @@ todoRouter.get("/", authorizeUser, async (req, res, next) => {
         const { id } = req.params;
 
         await redisClient.connect();
-        const cachedTodos = await redisClient.get("todos");
+        const cachedTodos = await redisClient.get(`allUserTodos${id}`);
 
         if (cachedTodos) {
             console.log("cache hit");
@@ -72,7 +76,7 @@ todoRouter.get("/", authorizeUser, async (req, res, next) => {
             res.json(todos);
 
             await redisClient.setEx(
-                "todos",
+                `allUserTodos${id}`,
                 DEFAULT_EXPIRATION,
                 JSON.stringify(todos)
             );
@@ -86,7 +90,7 @@ todoRouter.get("/", authorizeUser, async (req, res, next) => {
 // edit todo by id
 todoRouter.patch("/:todoId", authorizeUser, async (req, res, next) => {
     try {
-        const { todoId } = req.params;
+        const { todoId, id } = req.params;
         const { title, status } = req.body;
 
         if (!title) throw customError(401, "title is required");
@@ -99,8 +103,9 @@ todoRouter.patch("/:todoId", authorizeUser, async (req, res, next) => {
         const updatedTodo = await Todo.findByIdAndUpdate(todoId, todoItem, {
             new: true,
         });
-        console.log(updatedTodo);
+
         res.json(updatedTodo);
+        deleteRedisKey(`allUserTodos${id}`)
     } catch (error) {
         next(error);
     }
@@ -109,7 +114,7 @@ todoRouter.patch("/:todoId", authorizeUser, async (req, res, next) => {
 //delete todo by id
 todoRouter.delete("/:todoId", authorizeUser, async (req, res, next) => {
     try {
-        const { todoId } = req.params;
+        const { todoId, id } = req.params;
 
         const deletedTodo = await Todo.findByIdAndDelete(todoId, { new: true });
         if (!deletedTodo) throw customError(404, "todo not found");
@@ -123,6 +128,7 @@ todoRouter.delete("/:todoId", authorizeUser, async (req, res, next) => {
             console.log(list);
         }
         res.json(deletedTodo);
+        deleteRedisKey(`allUserTodos${id}`)
     } catch (error) {
         next(error);
     }
@@ -133,25 +139,8 @@ todoRouter.get("/:todoId", authorizeUser, async (req, res, next) => {
     try {
         const { todoId } = req.params;
 
-        await redisClient.connect();
-        const cachedTodo = await redisClient.get("todo");
-
-        if (cachedTodo) {
-            console.log("cache hit");
-            res.json(JSON.parse(cachedTodo));
-        } else {
-            console.log("cache miss");
-
-            const todo = await Todo.findById(todoId);
-            res.json(todo);
-
-            await redisClient.setEx(
-                "todo",
-                DEFAULT_EXPIRATION,
-                JSON.stringify(todo)
-            );
-        }
-        await redisClient.quit();
+        const todo = await Todo.findById(todoId);
+        res.json(todo);
 
     } catch (error) {
         next(error);
