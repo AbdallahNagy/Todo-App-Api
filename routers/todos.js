@@ -7,7 +7,6 @@ const Todo = require("../Models/todo");
 const List = require("../Models/list");
 const deleteRedisKey = require('../redisHelpers')
 
-
 const Redis = require("redis");
 const redisClient = Redis.createClient(); // {url: ''} <== when going production we need to provide a url
 const DEFAULT_EXPIRATION = 3600;

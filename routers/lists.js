@@ -6,7 +6,7 @@ const User = require("../Models/user");
 const Todo = require("../Models/todo");
 const { authorizeUser } = require("../userHelpers");
 const customError = require("../ErrorHandling");
-const deleteRedisKey = require('../redisHelpers')
+const deleteRedisKey = require("../redisHelpers");
 
 const Redis = require("redis");
 const redisClient = Redis.createClient();
@@ -27,7 +27,7 @@ listRouter.post("/", authorizeUser, async (req, res, next) => {
         user.save();
 
         res.status(200).json(list);
-        await deleteRedisKey(`userLists${id}`)
+        await deleteRedisKey(`userLists${id}`);
     } catch (error) {
         next(error);
     }
@@ -68,25 +68,8 @@ listRouter.get("/:listId", authorizeUser, async (req, res, next) => {
     try {
         const { listId } = req.params;
 
-        await redisClient.connect();
-        const cachedAllTodos = await redisClient.get(`userTodosByList${listId}`);
-
-        if (cachedAllTodos) {
-            console.log("cache hit");
-            res.json(JSON.parse(cachedAllTodos));
-        } else {
-            console.log("cache miss");
-
-            const todos = await Todo.find({ list: listId });
-            res.json(todos);
-
-            await redisClient.setEx(
-                `userTodosByList${listId}`,
-                DEFAULT_EXPIRATION,
-                JSON.stringify(todos)
-            );
-        }
-        await redisClient.quit();
+        const todos = await Todo.find({ list: listId });
+        res.json(todos);
     } catch (error) {
         next(error);
     }
@@ -95,7 +78,7 @@ listRouter.get("/:listId", authorizeUser, async (req, res, next) => {
 // edit list by id
 listRouter.patch("/:listId", authorizeUser, async (req, res, next) => {
     try {
-        const { listId } = req.params;
+        const { listId , id} = req.params;
         const { title } = req.body;
 
         if (!title) throw customError(401, "title is required");
@@ -107,8 +90,8 @@ listRouter.patch("/:listId", authorizeUser, async (req, res, next) => {
         );
         if (!updatedList) throw customError(404, "list not found");
 
-        res.json(updatedList);
-        await deleteRedisKey(`userLists${id}`)
+        await deleteRedisKey(`userLists${id}`);
+        res.send(updatedList);
     } catch (error) {
         next(error);
     }
@@ -131,8 +114,7 @@ listRouter.delete("/:listId", authorizeUser, async (req, res, next) => {
 
         res.send(deletedList);
 
-        await deleteRedisKey(`userLists${id}`)
-
+        await deleteRedisKey(`userLists${id}`);
     } catch (error) {
         next(error);
     }

@@ -19,7 +19,6 @@ const signUserToken = (id) => signAsync({ id }, secretKey);
 
 // verify authorize user (middleware)
 const authorizeUser = async (req, res, next) => {
-    // const { id } = req.params
     const { authorization: token } = req.headers;
     try {
         const payload = await verifyAsync(token, secretKey);
