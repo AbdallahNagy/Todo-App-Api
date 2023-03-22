@@ -15,7 +15,7 @@ const DEFAULT_EXPIRATION = 3600;
 todoRouter.post("/:listId", authorizeUser, async (req, res, next) => {
     try {
         const { listId, id } = req.params;
-        const { title, status } = req.body;
+        const { title, status , dateDue} = req.body;
 
         if (!title) throw customError(401, "title is required");
         if (!status) throw customError(401, "status is required");
@@ -25,6 +25,7 @@ todoRouter.post("/:listId", authorizeUser, async (req, res, next) => {
             status,
             list: listId,
             user: id,
+            dateDue
         });
 
         // add todo to list
@@ -43,11 +44,12 @@ todoRouter.post("/:listId", authorizeUser, async (req, res, next) => {
 todoRouter.post("/", authorizeUser, async (req, res, next) => {
     try {
         const { id } = req.params;
-        const { title, status } = req.body;
+        const { title, status , dateDue} = req.body;
         const todo = await Todo.create({
             title,
             status,
             user: id,
+            dateDue
         });
 
         res.json(todo);
