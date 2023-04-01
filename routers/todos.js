@@ -9,6 +9,7 @@ const deleteRedisKey = require("../redisHelpers");
 
 const Redis = require("redis");
 const redisClient = Redis.createClient({ url: process.env.REDIS_URL });
+redisClient.on('error', (err) => console.log('Redis Client Error', err));
 const DEFAULT_EXPIRATION = 3600;
 
 //create todo by list id
