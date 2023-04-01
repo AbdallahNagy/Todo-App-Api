@@ -9,7 +9,7 @@ const customError = require("../ErrorHandling");
 const deleteRedisKey = require("../redisHelpers");
 
 const Redis = require("redis");
-const redisClient = Redis.createClient();
+const redisClient = Redis.createClient({ url: process.env.REDIS_URL });
 const DEFAULT_EXPIRATION = 3600;
 
 // create list
