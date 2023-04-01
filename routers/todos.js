@@ -5,17 +5,17 @@ const customError = require("../ErrorHandling");
 const { authorizeUser } = require("../userHelpers");
 const Todo = require("../Models/todo");
 const List = require("../Models/list");
-const deleteRedisKey = require('../redisHelpers')
+const deleteRedisKey = require("../redisHelpers");
 
 const Redis = require("redis");
-const redisClient = Redis.createClient(); // {url: ''} <== when going production we need to provide a url
+const redisClient = Redis.createClient({ url: process.env.REDIS_URL });
 const DEFAULT_EXPIRATION = 3600;
 
 //create todo by list id
 todoRouter.post("/:listId", authorizeUser, async (req, res, next) => {
     try {
         const { listId, id } = req.params;
-        const { title, status , dateDue} = req.body;
+        const { title, status, dateDue } = req.body;
 
         if (!title) throw customError(401, "title is required");
         if (!status) throw customError(401, "status is required");
@@ -25,7 +25,7 @@ todoRouter.post("/:listId", authorizeUser, async (req, res, next) => {
             status,
             list: listId,
             user: id,
-            dateDue
+            dateDue,
         });
 
         // add todo to list
@@ -34,7 +34,7 @@ todoRouter.post("/:listId", authorizeUser, async (req, res, next) => {
         list.save();
 
         res.json(todo);
-        deleteRedisKey(`allUserTodos${id}`)
+        deleteRedisKey(`allUserTodos${id}`);
     } catch (err) {
         next(err);
     }
@@ -44,16 +44,16 @@ todoRouter.post("/:listId", authorizeUser, async (req, res, next) => {
 todoRouter.post("/", authorizeUser, async (req, res, next) => {
     try {
         const { id } = req.params;
-        const { title, status , dateDue} = req.body;
+        const { title, status, dateDue } = req.body;
         const todo = await Todo.create({
             title,
             status,
             user: id,
-            dateDue
+            dateDue,
         });
 
         res.json(todo);
-        deleteRedisKey(`allUserTodos${id}`)
+        deleteRedisKey(`allUserTodos${id}`);
     } catch (err) {
         next(err);
     }
@@ -106,7 +106,7 @@ todoRouter.patch("/:todoId", authorizeUser, async (req, res, next) => {
         });
 
         res.json(updatedTodo);
-        deleteRedisKey(`allUserTodos${id}`)
+        deleteRedisKey(`allUserTodos${id}`);
     } catch (error) {
         next(error);
     }
@@ -129,7 +129,7 @@ todoRouter.delete("/:todoId", authorizeUser, async (req, res, next) => {
             console.log(list);
         }
         res.json(deletedTodo);
-        deleteRedisKey(`allUserTodos${id}`)
+        deleteRedisKey(`allUserTodos${id}`);
     } catch (error) {
         next(error);
     }
@@ -142,7 +142,6 @@ todoRouter.get("/:todoId", authorizeUser, async (req, res, next) => {
 
         const todo = await Todo.findById(todoId);
         res.json(todo);
-
     } catch (error) {
         next(error);
     }
