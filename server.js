@@ -23,7 +23,7 @@ app.use((err, req, res, next) => {
 })
 
 mongoose.set('strictQuery', true)
-mongoose.connect('mongodb://127.0.0.1:27017/db', err => {
+mongoose.connect(process.env.MONGODB_ATLAS_URL, err => {
     if(err) console.log(err)
     else console.log("DATABASE CONNECTED SUCCESSFULLY")
 })
